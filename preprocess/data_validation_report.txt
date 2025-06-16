@@ -1,0 +1,54 @@
+Data Validation Report
+==============================
+
+Dataset Shape: (730, 17)
+Columns: Year, Week, Month, Chlamydia, Dengue, Giardiasis, Gonorrhea, Haemophilus, HepatitisA, HepatitisB, HepatitisC, Legionellosis, Lyme disease, Malaria, Syphilis, chickenpox, Date
+
+Data Types:
+Year                      int64
+Week                      int64
+Month                     int64
+Chlamydia                 int64
+Dengue                  float64
+Giardiasis                int64
+Gonorrhea                 int64
+Haemophilus               int64
+HepatitisA                int64
+HepatitisB                int64
+HepatitisC              float64
+Legionellosis             int64
+Lyme disease            float64
+Malaria                   int64
+Syphilis                  int64
+chickenpox                int64
+Date             datetime64[ns]
+dtype: object
+
+Missing Values:
+Year             0
+Week             0
+Month            0
+Chlamydia        0
+Dengue           0
+Giardiasis       0
+Gonorrhea        0
+Haemophilus      0
+HepatitisA       0
+HepatitisB       0
+HepatitisC       0
+Legionellosis    0
+Lyme disease     0
+Malaria          0
+Syphilis         0
+chickenpox       0
+Date             0
+dtype: int64
+
+Year Range: 2006 to 2019
+Week Range: 1 to 53
+Month Range: 1 to 12
+
+Negative Values Detected:
+Series([], dtype: int64)
+
+Duplicates Found: 0
