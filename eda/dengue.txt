@@ -1,0 +1,27 @@
+Report on "Dengue Cases Over Time" Graph
+Overview
+The graph displays the weekly trend of Dengue cases in the United States from 2006 to 2020.
+Key Observations
+2006–2016:
+Dengue cases are nearly absent, with almost all weeks reporting zero cases.
+2017–2018:
+Occasional, isolated spikes begin to appear, but the number of cases remains very low (typically 1–4 cases per week).
+2019–2020:
+There is a noticeable and sharp increase in Dengue cases.
+The highest weekly count exceeds 16 cases.
+The frequency and magnitude of spikes are much greater compared to previous years.
+Interpretation
+Emergence:
+Dengue was not a significant public health issue in the US for most of the period, but recent years show a clear upward trend.
+Outbreaks:
+The sharp spikes in 2019–2020 may indicate localized outbreaks or increased reporting/surveillance.
+Seasonality:
+No clear seasonal pattern is visible, but the data is sparse.
+Recommendations
+Further Investigation:
+Analyze the geographic distribution of these cases to identify outbreak locations.
+Investigate possible causes for the recent increase (e.g., climate change, travel, vector expansion).
+Public Health Action:
+Enhance surveillance and preventive measures in areas showing increased Dengue activity.
+Summary
+Dengue cases in the US were rare until 2017, after which there is a clear upward trend, peaking in 2019–2020. This warrants further epidemiological investigation and public health attention.

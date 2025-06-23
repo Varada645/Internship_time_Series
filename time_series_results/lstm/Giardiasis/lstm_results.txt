@@ -1,0 +1,4 @@
+LSTM RMSE: 55.36
+LSTM MAE: 47.97
+LSTM MAPE: 59.69%
+Differencing Order (d): 0.0

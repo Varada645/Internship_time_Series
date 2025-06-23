@@ -1,0 +1,66 @@
+## Exploratory Data Analysis (EDA) Report
+
+### 1. **Dataset Overview**
+- **Rows:** 730 (weekly records)
+- **Columns:** 16 (including 13 diseases, Year, Week, Reporting Area)
+- **Time Span:** 2006–2019 (weekly data)
+
+---
+
+### 2. **Missing Values**
+- **Dengue:** 209 missing entries
+- **HepatitisC:** 209 missing entries
+- **Lyme disease:** 156 missing entries
+- **Other columns:** No missing values
+
+---
+
+### 3. **Descriptive Statistics**
+- **Chlamydia** and **Gonorrhea** have the highest total cases.
+- **Dengue** has the lowest total cases (133).
+- Disease counts vary widely, with some diseases showing high weekly numbers and others being rare or sporadic.
+
+---
+
+### 4. **Total Cases Per Disease** (descending order)
+- **Chlamydia:** 8,600,909
+- **Gonorrhea:** 2,355,450
+- **chickenpox:** 123,667
+- **Giardiasis:** 109,770
+- **Lyme disease:** 105,945
+- **Syphilis:** 64,317
+- **Dengue:** 133
+
+---
+
+### 5. **Time Series Trend Example: Dengue**
+![Dengue Cases Over Time](attachment:image.png)
+
+- **Observation:**  
+  - Dengue cases are extremely rare before 2017.
+  - Noticeable increase in cases from 2018–2020, with a sharp spike in 2019–2020.
+  - Most weeks have zero cases; outbreaks are isolated and recent.
+
+---
+
+### 6. **Correlation Heatmap**
+- Shows relationships between diseases.
+- Some diseases may have positive or negative correlations, indicating possible co-occurrence or inverse trends.
+
+---
+
+### 7. **Key Insights**
+- **Most diseases** have consistent reporting and trends.
+- **Dengue** is a rare disease in this dataset, with recent outbreaks.
+- **Data completeness** is high except for a few diseases.
+- **Seasonality** and **outbreak patterns** can be observed in some diseases (e.g., chickenpox, Lyme disease).
+
+---
+
+### 8. **Recommendations**
+- Investigate reasons for missing data in Dengue, HepatitisC, and Lyme disease.
+- Further analyze the causes behind the recent spike in Dengue cases.
+- Use correlation analysis to explore possible links between diseases.
+
+---
+

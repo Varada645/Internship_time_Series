@@ -1,0 +1,58 @@
+Here’s what your missing data investigation means:
+
+---
+
+### **1. Missing Data Summary**
+- **Dengue:** 209 missing values (out of 730 rows)
+- **HepatitisC:** 209 missing values
+- **Lyme disease:** 156 missing values
+
+---
+
+### **2. Missing Percentage**
+- **Dengue & HepatitisC:** ~28.6% of the data is missing for each
+- **Lyme disease:** ~21.4% missing
+
+---
+
+### **3. Missing Data by Year**
+- **Dengue & HepatitisC:**  
+  - All data is missing from 2006–2009 (52 or 53 weeks each year).
+  - No missing data from 2010 onward.
+- **Lyme disease:**  
+  - No missing data until 2016.
+  - All data is missing for 2017, 2018, and 2019 (52 weeks each year).
+
+---
+
+### **4. Missing Data by Reporting Area**
+- All missing data is for the "United States" reporting area (the only area in your dataset).
+
+---
+
+### **5. Dengue Missing Periods (Sample)**
+- The first few missing Dengue records are from the start of 2006 (weeks 1–5 shown).
+
+---
+
+### **6. Dengue Non-Missing Stats**
+- **Count:** 521 non-missing values
+- **Mean:** 0.26 cases per week (very low)
+- **Std:** 1.35 (most weeks have 0 cases, but some spikes)
+- **Max:** 16 cases in a week
+- **Median (50%):** 0 (most weeks have 0 cases)
+
+---
+
+## **Interpretation**
+- **Dengue & HepatitisC:**  
+  - Not reported or not collected from 2006–2009. Data collection likely started in 2010.
+- **Lyme disease:**  
+  - Not reported or not collected from 2017–2019.
+- **Most missing data is due to entire years not being reported, not random gaps.**
+- **Dengue is a rare disease in this dataset, with most weeks reporting zero cases.**
+
+---
+
+**Summary:**  
+The missing data is systematic (entire years), not random. This is likely due to changes in surveillance/reporting practices over time. For analysis, be cautious when comparing trends across years with and without missing data.

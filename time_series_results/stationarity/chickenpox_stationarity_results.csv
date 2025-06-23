@@ -1,0 +1,5 @@
+Disease,Test,ADF_Statistic,p_value,Stationary,Recommended_d,Recommended_D
+chickenpox,Original,-3.6843008029803173,0.004339475414043486,True,0,1
+chickenpox,1st Differencing,-9.21845635765341,1.806938829843042e-15,True,,
+chickenpox,2nd Differencing,-8.829880187687722,1.781687944021843e-14,True,,
+chickenpox,Seasonal Differencing (m=52),-3.819719904636838,0.0027118774892664894,True,,

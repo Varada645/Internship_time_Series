@@ -1,0 +1,81 @@
+Here’s a summary report based on your **preprocessing script output** and the resulting CSV:
+
+---
+
+## 📝 **Preprocessing Report**
+
+### **1. Actions Performed**
+
+- **Dropped Redundant Column:**  
+  - Removed `Reporting Area` as it was not needed.
+
+- **Missing Data Analysis:**  
+  - Calculated missing counts and percentages for `Dengue`, `HepatitisC`, and `Lyme disease`.
+
+- **Duplicate Handling:**  
+  - Checked for duplicate dates (found 2).
+  - Aggregated duplicates by summing case counts.
+
+- **Date Handling:**  
+  - Created a proper `Date` column from `Year` and `Week`.
+  - Ensured all rows have a valid weekly date.
+
+- **Imputation of Missing Values:**  
+  - **Dengue:** Filled missing values with 0 (since most weeks have 0 cases).
+  - **HepatitisC:** Imputed missing values using the monthly mean.
+  - **Lyme disease:** Imputed missing values using the monthly mean from 2006–2016.
+
+- **Data Type Enforcement:**  
+  - Rounded imputed values and converted them to integers.
+
+- **Added Time Features:**  
+  - Ensured `Date`, `Month`, and `WeekOfYear` columns are present and adjacent.
+
+- **Set Weekly Frequency:**  
+  - Set the DataFrame to have a weekly frequency (`W-MON`), forward-filling as needed.
+
+- **Validation:**  
+  - Checked that all missing values for the three diseases are now filled.
+
+- **Saved Output:**  
+  - Exported the cleaned DataFrame to `preprocessed_dataset.csv`.
+
+---
+
+### **2. Output Summary**
+
+#### **Missing Data (Before Imputation):**
+- **Dengue:** 209 missing (~28.6%)
+- **HepatitisC:** 209 missing (~28.6%)
+- **Lyme disease:** 156 missing (~21.4%)
+
+#### **Duplicates:**
+- 2 duplicate dates found and aggregated.
+
+#### **Missing Data (After Imputation):**
+- **Dengue:** 0 missing
+- **HepatitisC:** 0 missing
+- **Lyme disease:** 0 missing
+
+#### **Descriptive Stats (After Preprocessing):**
+- Provided for `Dengue`, `HepatitisC`, and `Lyme disease` (mean, std, min, max, etc.)
+
+#### **CSV Output:**
+- The file `preprocessed_dataset.csv` contains:
+  - Cleaned and imputed data.
+  - Columns: `Date`, `Month`, `WeekOfYear`, `Year`, `Week`, and all disease columns.
+  - No missing values for the three key diseases.
+  - Weekly frequency, ready for time series analysis or modeling.
+
+---
+
+### **3. Key Improvements**
+
+- **Data is now clean, complete, and consistent.**
+- **Ready for analysis, visualization, or machine learning.**
+- **No missing or duplicate dates.**
+- **Temporal features (`Month`, `WeekOfYear`) are included for seasonality analysis.**
+
+---
+
+

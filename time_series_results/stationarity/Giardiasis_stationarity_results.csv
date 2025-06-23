@@ -1,0 +1,5 @@
+Disease,Test,ADF_Statistic,p_value,Stationary,Recommended_d,Recommended_D
+Giardiasis,Original,-4.575366889581686,0.00014336875751655252,True,0,1
+Giardiasis,1st Differencing,-17.809200410215507,3.1944037307885646e-30,True,,
+Giardiasis,2nd Differencing,-12.612164149732804,1.6462486479173922e-23,True,,
+Giardiasis,Seasonal Differencing (m=26),-9.36040871251903,7.850917536733686e-16,True,,
