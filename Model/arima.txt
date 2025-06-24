@@ -1,4 +1,4 @@
-This script (`program_5_arima_model.py`) automates ARIMA time series modeling for disease case data. Here’s a breakdown of what it does:
+This script (`arima_model.py`) automates ARIMA time series modeling for disease case data. Here’s a breakdown of what it does:
 
 ---
 
