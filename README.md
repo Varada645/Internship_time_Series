@@ -1,4 +1,4 @@
-
+<pre>
 inter_disease/
 ├── Model/
 │ ├── lstm.py
@@ -126,4 +126,5 @@ inter_disease/
 ├── US_ID (1).csv
 ├── report.md
 └── requirement.txt
+</pre>
 
