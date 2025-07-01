@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 
 # Define input and output paths
-input_path = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/selected_diseases_time_series.csv"
+input_path = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/selected_diseases_time_series_with_seasonality.csv"
 output_dir = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/plots"
 os.makedirs(output_dir, exist_ok=True)
 

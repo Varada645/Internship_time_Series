@@ -1,6 +1,6 @@
-# program_1_load_prepare_data.py
 import pandas as pd
 import os
+from datetime import datetime
 
 # Define input and output paths
 input_path = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/preprocess/preprocessed_dataset.csv"
@@ -18,12 +18,20 @@ df = pd.read_csv(input_path)
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
+# Add seasonal features
+df['Week'] = df.index.isocalendar().week  # Week number (1-52/53)
+df['Month'] = df.index.month              # Month number (1-12)
+df['DayOfWeek'] = df.index.dayofweek      # Day of week (0-6)
+
 # List of diseases to analyze
 diseases = ['Giardiasis', 'chickenpox']  # Modify to include other diseases
 
-# Save combined time series for selected diseases
-output_path = f"{output_dir}/selected_diseases_time_series.csv"
-df[diseases].to_csv(output_path)
-print(f"Saved combined time series for {', '.join(diseases)} to {output_path}")
+# Select columns to save (diseases + seasonal features)
+columns_to_save = diseases + ['Week', 'Month', 'DayOfWeek']
 
-print("✅ Data loaded and prepared for analysis.")
+# Save combined time series with seasonal features
+output_path = f"{output_dir}/selected_diseases_time_series_with_seasonality.csv"
+df[columns_to_save].to_csv(output_path)
+print(f"Saved combined time series with seasonal features for {', '.join(diseases)} to {output_path}")
+
+print("✅ Data loaded and prepared for analysis with seasonal features.")

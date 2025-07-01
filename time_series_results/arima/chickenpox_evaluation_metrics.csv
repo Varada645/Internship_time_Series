@@ -1,0 +1,2 @@
+Disease,RMSE,MAE,Number_of_Observations,Evaluation_Start,Evaluation_End
+chickenpox,16.88993448163948,13.273901279451419,156,2017-01-09 00:00:00,2019-12-30 00:00:00

@@ -1,4 +1,4 @@
-SARIMA RMSE: 25.15
-SARIMA MAE: 20.16
-SARIMA MAPE: 37.77%
-Differencing Order (d): 0.0
+SARIMA RMSE: 64.20
+SARIMA MAE: 61.85
+SARIMA MAPE: 98.15%
+Differencing Order (d): 1

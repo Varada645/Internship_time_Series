@@ -1,4 +1,0 @@
-GRU RMSE: 57.98
-GRU MAE: 50.44
-GRU MAPE: 62.44%
-Differencing Order (d): 0.0

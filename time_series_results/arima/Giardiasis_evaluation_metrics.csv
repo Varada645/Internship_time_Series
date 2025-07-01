@@ -1,0 +1,2 @@
+Disease,RMSE,MAE,Number_of_Observations,Evaluation_Start,Evaluation_End
+Giardiasis,44.53395048811307,34.740153754592846,156,2017-01-09 00:00:00,2019-12-30 00:00:00

@@ -1,4 +1,0 @@
-ARIMA RMSE: 50.80
-ARIMA MAE: 42.87
-ARIMA MAPE: 53.95%
-Differencing Order (d): 0.0
