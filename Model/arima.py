@@ -282,6 +282,7 @@ def process_disease(disease, m):
 
         # Save forecast
         forecast_df = pd.DataFrame({disease: forecast_series})
+        forecast_df = forecast_df.reset_index().rename(columns={'index': 'Date'})  # <--
         forecast_df.to_csv(f"{output_dir}/{disease}_forecast_2021.csv")
         print(f"Forecast saved to {output_dir}/{disease}_forecast_2021.csv")
     except Exception as e:
@@ -389,3 +390,11 @@ for disease, m in diseases.items():
     process_disease(disease, m)
 
 print("✅ All enhanced stationarity + order suggestion + auto_arima + forecast to 2021 completed.")
+
+def mean_absolute_percentage_error(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    return np.mean(np.abs((y_true - y_pred) / np.clip(np.abs(y_true), 1e-8, None))) * 100
+
+    print(f"Mean Absolute Percentage Error: {mean_absolute_percentage_error(test_series, forecast_series):.2f}%")
+
+

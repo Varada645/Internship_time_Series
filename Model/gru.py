@@ -1,257 +1,195 @@
+# GRU Forecasting Model for Disease Time Series
+
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+import os
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-import matplotlib.pyplot as plt
-import os
-import shutil
-from datetime import timedelta
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import joblib
+import math
 
-# Paths
-base_dir = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results"
-input_dir = f"{base_dir}/splits"
-stationarity_dir = f"{base_dir}/stationarity"
-output_dir = f"{base_dir}/gru"
-plot_dir = f"{base_dir}/forecasts"
-os.makedirs(output_dir, exist_ok=True)
-os.makedirs(plot_dir, exist_ok=True)
+# --- CONFIG ---
+DATA_PATH = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/selected_diseases_time_series_with_seasonality.csv"
+OUTPUT_DIR = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/gru_model"
+PLOT_DIR = os.path.join(OUTPUT_DIR, "plots")
+SCALER_DIR = os.path.join(OUTPUT_DIR, "scalers")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(PLOT_DIR, exist_ok=True)
+os.makedirs(SCALER_DIR, exist_ok=True)
 
-# Diseases and sequence length
-diseases = {'Giardiasis': 4, 'chickenpox': 4}
-forecast_horizon = 104  # Forecast 104 weeks (2 years)
+# --- Seasonality Features ---
+def add_seasonality(df):
+    df['Week_sin'] = np.sin(2 * np.pi * df['Week'] / 52)
+    df['Week_cos'] = np.cos(2 * np.pi * df['Week'] / 52)
+    df['Month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
+    df['Month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
+    return df
 
-# Clean up old files in output_dir and plot_dir
-for folder in [output_dir, plot_dir]:
-    for item in os.listdir(folder):
-        item_path = os.path.join(folder, item)
-        if os.path.isfile(item_path):
-            os.remove(item_path)
-        elif os.path.isdir(item_path) and item not in diseases:
-            shutil.rmtree(item_path)
+# --- Lag Feature Engineering ---
+def add_lag_features(df, target_col, lags=[1,2,3,4,5,6]):
+    for lag in lags:
+        df[f"{target_col}_lag{lag}"] = df[target_col].shift(lag)
+    df = df.fillna(method='ffill').fillna(method='bfill')
+    return df
 
-# Device
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# Dataset
-class TimeSeriesDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = torch.tensor(X, dtype=torch.float32)
-        self.y = torch.tensor(y, dtype=torch.float32)
-    def __len__(self):
-        return len(self.X)
-    def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
-
-# GRU Model
-class GRUModel(nn.Module):
-    def __init__(self, input_size=1, hidden_size=100, num_layers=2, dropout=0.3):
-        super(GRUModel, self).__init__()
-        self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+# --- GRU Model ---
+class GRUNet(nn.Module):
+    def __init__(self, input_size, hidden_size=128, num_layers=2):
+        super(GRUNet, self).__init__()
+        self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True)
+        self.dropout = nn.Dropout(0.3)
         self.fc = nn.Linear(hidden_size, 1)
-        self.relu = nn.ReLU()
+
     def forward(self, x):
         out, _ = self.gru(x)
-        out = self.relu(out[:, -1, :])
-        out = self.fc(out)
-        return out
+        out = self.dropout(out[:, -1, :])
+        return self.fc(out)
 
-# Prepare sequences
-def prepare_sequences(data, seq_length):
+# --- Create Sequences ---
+def create_sequences(data, target_col, seq_len):
     X, y = [], []
-    for i in range(len(data) - seq_length):
-        X.append(data[i:i + seq_length])
-        y.append(data[i + seq_length])
+    for i in range(seq_len, len(data)):
+        X.append(data[i - seq_len:i])
+        y.append(data[i][target_col])
     return np.array(X), np.array(y)
 
-# Reverse differencing
-def reverse_differencing(history, predictions, d):
-    if d == 0:
-        return predictions
-    result = [history[-d] + predictions[0]]
-    for i in range(1, len(predictions)):
-        result.append(result[i-1] + predictions[i])
-    return np.array(result)
+# --- Forecast Function ---
+def forecast_with_gru(disease, seq_len=12, epochs=100, hidden_size=128, learning_rate=0.001):
+    print(f"\n📈 GRU Forecasting for {disease}")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# MAPE function to handle zero values
-def mean_absolute_percentage_error(actual, predicted):
-    actual, predicted = np.array(actual), np.array(predicted)
-    non_zero_mask = actual != 0
-    if non_zero_mask.sum() == 0:
-        return np.inf
-    return np.mean(np.abs((actual[non_zero_mask] - predicted[non_zero_mask]) / actual[non_zero_mask])) * 100
+    df = pd.read_csv(DATA_PATH)
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = add_seasonality(df)
+    df = add_lag_features(df, disease)
 
-# Process each disease
-for disease, seq_length in diseases.items():
-    # Create subfolders for each disease
-    disease_dir = os.path.join(output_dir, disease)
-    disease_plot_dir = os.path.join(plot_dir, disease)
-    os.makedirs(disease_dir, exist_ok=True)
-    os.makedirs(disease_plot_dir, exist_ok=True)
+    split_idx = int(len(df) * 0.8)
+    train = df.iloc[:split_idx].reset_index(drop=True)
+    test = df.iloc[split_idx:].reset_index(drop=True)
 
-    # Load data
-    train_path = f"{input_dir}/{disease}_train.csv"
-    test_path = f"{input_dir}/{disease}_test.csv"
-    stationarity_path = f"{stationarity_dir}/{disease}_stationarity_results.csv"
-    
-    if not (os.path.exists(train_path) and os.path.exists(test_path)):
-        print(f"Error: {disease} train/test files missing.")
-        continue
-    
-    train = pd.read_csv(train_path, index_col='Date', parse_dates=True)
-    test = pd.read_csv(test_path, index_col='Date', parse_dates=True)
-    
-    try:
-        # Check data
-        if train[disease].isna().any() or test[disease].isna().any():
-            raise ValueError("Missing values found")
-        if (train[disease] < 0).any() or (test[disease] < 0).any():
-            raise ValueError("Negative values found")
-        
-        # Get differencing order
-        d = 1 if not os.path.exists(stationarity_path) else pd.read_csv(stationarity_path)['Recommended_d'].iloc[0]
-        if os.path.exists(stationarity_path):
-            p_value = pd.read_csv(stationarity_path).loc[pd.read_csv(stationarity_path)['Test'] == 'Original', 'p_value'].iloc[0]
-            if p_value > 0.05 and d == 0:
-                print(f"{disease} not stationary (p={p_value:.4f}), using d=1")
-                d = 1
-        
-        # Log transform
-        train_data = np.log1p(train[disease].copy())
-        test_data = np.log1p(test[disease].copy())
-        
-        # Differencing
-        if d > 0:
-            train_data = train_data.diff(d).dropna()
-            test_data = test_data.diff(d).dropna()
-        
-        # Scale
-        scaler = MinMaxScaler()
-        train_scaled = scaler.fit_transform(train_data.values.reshape(-1, 1))
-        test_scaled = scaler.transform(test_data.values.reshape(-1, 1))
-        
-        # Sequences
-        X_train, y_train = prepare_sequences(train_scaled, seq_length)
-        train_dataset = TimeSeriesDataset(X_train, y_train)
-        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-        
-        # Model
-        model = GRUModel().to(device)
-        criterion = nn.MSELoss()
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
-        
-        # Train
-        epochs = 100
-        best_loss = float('inf')
-        patience = 10
-        counter = 0
-        for epoch in range(epochs):
-            model.train()
-            train_loss = 0
-            for X_batch, y_batch in train_loader:
-                X_batch, y_batch = X_batch.to(device), y_batch.to(device)
-                optimizer.zero_grad()
-                output = model(X_batch)
-                loss = criterion(output, y_batch)
-                loss.backward()
-                optimizer.step()
-                train_loss += loss.item()
-            train_loss /= len(train_loader)
-            print(f"{disease} Epoch {epoch+1}, Loss: {train_loss:.4f}")
-            
-            # Early stopping
-            if train_loss < best_loss:
-                best_loss = train_loss
-                counter = 0
-                torch.save(model.state_dict(), f"{disease_dir}/gru_best.pth")
-            else:
-                counter += 1
-                if counter >= patience:
-                    print(f"Early stopping at epoch {epoch+1}")
-                    break
-        
-        # Load best model
-        model.load_state_dict(torch.load(f"{disease_dir}/gru_best.pth"))
-        
-        # Forecasting (test set + future)
-        model.eval()
-        predictions = []
-        future_predictions = []
-        input_seq = train_scaled[-seq_length:].copy()
-        input_seq = torch.tensor(input_seq, dtype=torch.float32).reshape(1, seq_length, 1).to(device)
-        
-        # Test set predictions
-        with torch.no_grad():
-            for _ in range(len(test)):
-                pred = model(input_seq)
-                predictions.append(pred.cpu().numpy()[0, 0])
-                input_seq = torch.cat((input_seq[:, 1:, :], pred.reshape(1, 1, 1)), dim=1)
-        
-        # Future predictions
-        with torch.no_grad():
-            for _ in range(forecast_horizon):
-                pred = model(input_seq)
-                future_predictions.append(pred.cpu().numpy()[0, 0])
-                input_seq = torch.cat((input_seq[:, 1:, :], pred.reshape(1, 1, 1)), dim=1)
-        
-        # Reverse scaling and differencing for test predictions
-        predictions = scaler.inverse_transform(np.array(predictions).reshape(-1, 1)).flatten()
-        predictions = np.expm1(predictions)
-        if d > 0:
-            predictions = reverse_differencing(train[disease].values[-d:], predictions, d)
-        predictions = np.maximum(predictions, 0)
-        
-        # Reverse scaling and differencing for future predictions
-        future_predictions = scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1)).flatten()
-        future_predictions = np.expm1(future_predictions)
-        if d > 0:
-            future_predictions = reverse_differencing(np.concatenate([train[disease].values, test[disease].values])[-d:], 
-                                                    future_predictions, d)
-        future_predictions = np.maximum(future_predictions, 0)
-        
-        # Metrics
-        rmse = np.sqrt(mean_squared_error(test[disease].values[:len(predictions)], predictions))
-        mae = mean_absolute_error(test[disease].values[:len(predictions)], predictions)
-        mape = mean_absolute_percentage_error(test[disease].values[:len(predictions)], predictions)
-        
-        # Create date index for future predictions
-        last_date = test.index[-1]
-        future_dates = [last_date + timedelta(weeks=i) for i in range(1, forecast_horizon+1)]
-        
-        # Save results
-        with open(f"{disease_dir}/gru_results.txt", "w") as f:
-            f.write(f"GRU RMSE: {rmse:.2f}\n")
-            f.write(f"GRU MAE: {mae:.2f}\n")
-            f.write(f"GRU MAPE: {mape:.2f}%\n")
-            f.write(f"Differencing Order (d): {d}\n")
-        
-        # Save forecasts
-        forecast_df = pd.DataFrame({
-            'Date': list(test.index[:len(predictions)]) + future_dates,
-            'Forecast': np.concatenate([predictions, future_predictions])
-        })
-        forecast_df['Date'] = pd.to_datetime(forecast_df['Date'])
-        forecast_df.to_csv(f"{disease_dir}/gru_forecast.csv", index=False)
-        
-        # Plot forecast
-        plt.figure(figsize=(12, 6))
-        plt.plot(train[disease], label='Train')
-        plt.plot(test[disease], label='Actual')
-        plt.plot(test.index[:len(predictions)], predictions, label='Test Forecast')
-        plt.plot(future_dates, future_predictions, label='Future Forecast', linestyle='--')
-        plt.title(f'{disease} GRU Forecast')
-        plt.legend()
-        plt.grid(True)
-        plt.savefig(f"{disease_plot_dir}/gru_forecast_plot.png")
-        plt.close()
-        
-        print(f"{disease} GRU RMSE: {rmse:.2f}, d={d}")
-    
-    except Exception as e:
-        print(f"Error for {disease}: {e}")
+    scaler = MinMaxScaler()
+    train_scaled = scaler.fit_transform(train.drop(columns=['Date']))
+    test_scaled = scaler.transform(test.drop(columns=['Date']))
+    joblib.dump(scaler, os.path.join(SCALER_DIR, f"{disease}_scaler.pkl"))
 
-print("✅ GRU modeling completed.")
-print(f"Saving forecast to: {output_dir}")
+    feature_cols = train.drop(columns=['Date']).columns.tolist()
+    target_idx = feature_cols.index(disease)
+    X_train, y_train = create_sequences(train_scaled, target_idx, seq_len)
+
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).view(-1, 1)
+    loader = DataLoader(TensorDataset(X_train_tensor, y_train_tensor), batch_size=16, shuffle=True)
+
+    model = GRUNet(input_size=X_train.shape[2], hidden_size=hidden_size).to(device)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    model.train()
+    for epoch in range(epochs):
+        total_loss = 0
+        for xb, yb in loader:
+            xb, yb = xb.to(device), yb.to(device)
+            optimizer.zero_grad()
+            pred = model(xb)
+            loss = criterion(pred, yb)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            total_loss += loss.item()
+        if (epoch + 1) % 10 == 0:
+            print(f"Epoch {epoch+1}, Loss: {total_loss / len(loader):.4f}")
+
+    model.eval()
+    test_true = test[disease].values
+    history = list(train_scaled[-seq_len:])
+    test_pred = []
+    with torch.no_grad():
+        for i in range(len(test_scaled)):
+            inp = torch.tensor(np.array(history[-seq_len:])[np.newaxis], dtype=torch.float32).to(device)
+            pred = model(inp).item()
+            pred = max(0, pred)
+            new_feat = test_scaled[i].copy()
+            new_feat[target_idx] = pred
+            history.append(new_feat)
+            test_pred.append(pred)
+
+    test_pred = scaler.inverse_transform(
+        np.column_stack([test_pred] + [test_scaled[:, i] for i in range(1, test_scaled.shape[1])])
+    )[:, 0]
+
+    rmse = math.sqrt(mean_squared_error(test_true, test_pred))
+    mae = mean_absolute_error(test_true, test_pred)
+    mape = mean_absolute_percentage_error(test_true, test_pred)
+    print(f"Test RMSE: {rmse:.4f}, MAE: {mae:.4f}, MAPE: {mape:.2f}%")
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(test['Date'], test_true, label='Actual Test', color='blue')
+    plt.plot(test['Date'], test_pred, label='GRU Prediction (Test)', linestyle=':', color='orange')
+    plt.title(f'{disease} GRU Forecast (Test Set)')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOT_DIR, f"{disease}_gru_forecast.png"))
+    plt.close()
+
+    print(f"✅ Forecast plot saved for {disease}")
+
+    # --- Forecast future until end of 2022 ---
+    last_date = pd.to_datetime(test['Date'].iloc[-1])
+    end_date = pd.to_datetime("2022-12-26")  # Last Monday of 2022
+    future_weeks = max(1, ((end_date - last_date).days) // 7)
+    future_forecasts = []
+    future_dates = []
+    week = int(test['Week'].iloc[-1])
+    month = int(test['Month'].iloc[-1])
+    history_future = history.copy()
+
+    with torch.no_grad():
+        for _ in range(future_weeks):
+            inp = torch.tensor(np.array(history_future[-seq_len:])[np.newaxis], dtype=torch.float32).to(device)
+            pred = model(inp).item()
+            pred = max(0, pred)
+            new_feat = history_future[-1].copy()
+            new_feat[target_idx] = pred
+            # Update seasonality features
+            week = (week % 52) + 1
+            month = (month % 12) + 1
+            new_feat[-4] = np.sin(2 * np.pi * week / 52)
+            new_feat[-3] = np.cos(2 * np.pi * week / 52)
+            new_feat[-2] = np.sin(2 * np.pi * month / 12)
+            new_feat[-1] = np.cos(2 * np.pi * month / 12)
+            history_future.append(new_feat)
+            future_forecasts.append(new_feat.copy())
+            future_dates.append(last_date + pd.Timedelta(weeks=len(future_dates)+1))
+
+    future_forecasts_arr = np.array(future_forecasts)
+    future_forecast_values = scaler.inverse_transform(future_forecasts_arr)[:, target_idx]
+
+    # --- Plot with future forecast ---
+    plt.figure(figsize=(12, 6))
+    plt.plot(test['Date'], test_true, label='Actual Test', color='blue')
+    plt.plot(test['Date'], test_pred, label='GRU Prediction (Test)', linestyle=':', color='orange')
+    plt.plot(future_dates, future_forecast_values, label='Forecast (Future)', linestyle='--', color='red')
+    plt.title(f'{disease} GRU Forecast (Test + Future)')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOT_DIR, f"{disease}_gru_forecast_future.png"))
+    plt.close()
+
+    # Save future forecast to CSV
+    pd.DataFrame({"Date": future_dates, "Forecast": future_forecast_values}).to_csv(
+        os.path.join(OUTPUT_DIR, f"{disease}_gru_forecast_future.csv"), index=False
+    )
+
+    print(f"✅ Future forecast (till 2022) plot and CSV saved for {disease}")
+
+def mean_absolute_percentage_error(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    return np.mean(np.abs((y_true - y_pred) / np.clip(np.abs(y_true), 1e-8, None))) * 100
+
+# --- Run Forecasts ---
+forecast_with_gru("chickenpox")
+forecast_with_gru("Giardiasis")

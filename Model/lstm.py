@@ -1,31 +1,50 @@
-# LSTM Forecasting for Chickenpox & Giardiasis with Multivariate Features + Seasonality
+# LSTM Pipeline Upgrade for Disease Forecasting
 
 import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import joblib
+import math
 
-# Paths
-input_dir = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/splits"
-output_dir = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/lstm_multivariate"
-plot_dir = os.path.join(output_dir, "plots")
-os.makedirs(output_dir, exist_ok=True)
-os.makedirs(plot_dir, exist_ok=True)
+# --- CONFIG ---
+DATA_PATH = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/selected_diseases_time_series_with_seasonality.csv"
+OUTPUT_DIR = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/lstm_upgraded"
+PLOT_DIR = os.path.join(OUTPUT_DIR, "plots")
+SCALER_DIR = os.path.join(OUTPUT_DIR, "scalers")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(PLOT_DIR, exist_ok=True)
+os.makedirs(SCALER_DIR, exist_ok=True)
 
-# Add seasonality features
 def add_seasonality(df):
-    df['Date'] = pd.to_datetime(df['Date'])
     df['Week_sin'] = np.sin(2 * np.pi * df['Week'] / 52)
     df['Week_cos'] = np.cos(2 * np.pi * df['Week'] / 52)
     df['Month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
     df['Month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
     return df
 
-# Sequence creation
+def add_lag_features(df, target_col, lags=[1,2,3,4,5,6]):
+    for lag in lags:
+        df[f"{target_col}_lag{lag}"] = df[target_col].shift(lag)
+    df = df.fillna(0)
+    return df
+
+class LSTM(nn.Module):
+    def __init__(self, input_size, hidden_size=128, num_layers=2):
+        super(LSTM, self).__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.dropout = nn.Dropout(0.3)
+        self.fc = nn.Linear(hidden_size, 1)
+    def forward(self, x):
+        out, _ = self.lstm(x)
+        out = self.dropout(out[:, -1, :])
+        return self.fc(out)
+
 def create_sequences(df, target_col, seq_len):
     df = df.drop(columns=['Date'])
     scaler = MinMaxScaler()
@@ -36,110 +55,147 @@ def create_sequences(df, target_col, seq_len):
         y.append(scaled[i][df.columns.get_loc(target_col)])
     return np.array(X), np.array(y), scaler
 
-# LSTM Model
-class LSTM(nn.Module):
-    def __init__(self, input_size, hidden_size=128, num_layers=2):
-        super(LSTM, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.dropout = nn.Dropout(0.3)
-        self.fc = nn.Linear(hidden_size, 1)
-
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        out = self.dropout(out[:, -1, :])
-        return self.fc(out)
-
-# Forecast function (generic for any disease)
-def forecast_disease(disease, seq_len=12, future_weeks=52, epochs=100):
-    print(f"\n🚀 Forecasting {disease} using multivariate LSTM")
+def forecast_disease(disease, seq_len=12, epochs=100, hidden_size=128, learning_rate=0.001):
+    print(f"\n🚀 Forecasting {disease} using LSTM pipeline")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train = pd.read_csv(os.path.join(input_dir, f"{disease}_train.csv"))
-    test = pd.read_csv(os.path.join(input_dir, f"{disease}_test.csv"))
-    df = pd.concat([train, test], ignore_index=True)
+    # Load and preprocess data
+    df = pd.read_csv(DATA_PATH)
+    df['Date'] = pd.to_datetime(df['Date'])
     df = add_seasonality(df)
+    df = add_lag_features(df, disease)
 
-    # Limit forecasting only until end of 2024
-    last_date = pd.to_datetime(df['Date'].iloc[-1])
-    end_date = pd.to_datetime("2024-12-30")
-    remaining_weeks = ((end_date - last_date).days) // 7
-    future_weeks = max(1, remaining_weeks)
+    # Split: last 20% as test
+    split_idx = int(len(df) * 0.8)
+    train = df.iloc[:split_idx].reset_index(drop=True)
+    test = df.iloc[split_idx:].reset_index(drop=True)
 
-    X, y, scaler = create_sequences(df.copy(), target_col=disease, seq_len=seq_len)
-    X_train = torch.tensor(X, dtype=torch.float32)
-    y_train = torch.tensor(y, dtype=torch.float32).view(-1, 1)
-    loader = DataLoader(TensorDataset(X_train, y_train), batch_size=16, shuffle=True)
+    # Fit scaler only on train, transform both
+    scaler = MinMaxScaler()
+    train_scaled = scaler.fit_transform(train.drop(columns=['Date']))
+    test_scaled = scaler.transform(test.drop(columns=['Date']))
+    joblib.dump(scaler, os.path.join(SCALER_DIR, f"{disease}_scaler.pkl"))
 
-    model = LSTM(input_size=X.shape[2]).to(device)
+    # Prepare sequences for training (from train only)
+    X_train, y_train = [], []
+    train_cols = train.drop(columns=['Date']).columns
+    for i in range(seq_len, len(train_scaled)):
+        X_train.append(train_scaled[i-seq_len:i])
+        y_train.append(train_scaled[i][train_cols.get_loc(disease)])
+    X_train = np.array(X_train)
+    y_train = np.array(y_train)
+
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).view(-1, 1)
+    loader = DataLoader(TensorDataset(X_train_tensor, y_train_tensor), batch_size=16, shuffle=True)
+
+    # Model
+    model = LSTM(input_size=X_train.shape[2], hidden_size=hidden_size).to(device)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+    # Training
     model.train()
+    best_loss = float('inf')
     for epoch in range(epochs):
+        total_loss = 0
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
             optimizer.zero_grad()
-            loss = criterion(model(xb), yb)
+            pred = model(xb)
+            loss = criterion(pred, yb)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
-        if (epoch+1) % 10 == 0:
-            print(f"Epoch {epoch+1}, Loss: {loss.item():.4f}")
+            total_loss += loss.item()
+        avg_loss = total_loss / len(loader)
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save(model.state_dict(), os.path.join(OUTPUT_DIR, f"{disease}_best_model.pt"))
+        if (epoch + 1) % 10 == 0:
+            print(f"Epoch {epoch+1}, Loss: {avg_loss:.4f}")
 
-    # Forecast
+    # Forecast: start from end of test set until end of 2021
     model.eval()
-    history = list(X[-1])  # last sequence
+    last_date = pd.to_datetime(test['Date'].iloc[-1])
+    end_date = pd.to_datetime("2021-12-27")  # Last Monday of 2021
+    future_weeks = max(1, ((end_date - last_date).days) // 7)
+    history = list(test_scaled[-seq_len:])
     forecasts = []
-    last_date = pd.to_datetime(df['Date'].iloc[-1])
-    week = int(df['Week'].iloc[-1])
-    month = int(df['Month'].iloc[-1])
+    week = int(test['Week'].iloc[-1])
+    month = int(test['Month'].iloc[-1])
 
     with torch.no_grad():
-        for i in range(future_weeks):
+        for _ in range(future_weeks):
             inp = torch.tensor(np.array(history[-seq_len:])[np.newaxis], dtype=torch.float32).to(device)
             pred = model(inp).item()
             pred = max(0, pred)
-            # Update features for next step
+            new_feat = history[-1].copy()
+            new_feat[0] = pred  # update target
             week = (week % 52) + 1
             month = (month % 12) + 1
-            week_sin = np.sin(2 * np.pi * week / 52)
-            week_cos = np.cos(2 * np.pi * week / 52)
-            month_sin = np.sin(2 * np.pi * month / 12)
-            month_cos = np.cos(2 * np.pi * month / 12)
-            new_feat = history[-1].copy()
-            new_feat[0] = pred
-            # Update seasonality features
-            new_feat[-4] = week_sin
-            new_feat[-3] = week_cos
-            new_feat[-2] = month_sin
-            new_feat[-1] = month_cos
+            new_feat[-4] = np.sin(2 * np.pi * week / 52)
+            new_feat[-3] = np.cos(2 * np.pi * week / 52)
+            new_feat[-2] = np.sin(2 * np.pi * month / 12)
+            new_feat[-1] = np.cos(2 * np.pi * month / 12)
             history.append(new_feat)
-            forecasts.append(pred)
+            forecasts.append(new_feat.copy())
 
-    # Inverse transform
-    pred_scaled = np.array(forecasts).reshape(-1, 1)
-    zeros_padding = np.zeros((future_weeks, X.shape[2] - 1))
-    inv_input = np.hstack([pred_scaled, zeros_padding])
-    forecast_values = scaler.inverse_transform(inv_input)[:, 0]
-
-    # Plot
+    forecasts_arr = np.array(forecasts)
+    forecast_values = scaler.inverse_transform(forecasts_arr)[:, 0]
     future_dates = pd.date_range(last_date + pd.Timedelta(weeks=1), periods=future_weeks, freq='W-MON')
 
-    full_df = pd.concat([train, test], ignore_index=True)
-    full_df['Date'] = pd.to_datetime(full_df['Date'])
-    plt.figure(figsize=(12,6))
-    plt.plot(full_df['Date'], full_df[disease], label='Historical (Train+Test)', color='blue')
-    plt.plot(future_dates, forecast_values, label='Forecast (till 2024)', linestyle='--', color='red')
-    plt.title(f'{disease} Forecast until 2024')
+    # Evaluate on test set
+    test_true = test[disease].values
+    test_pred = []
+    history_eval = list(train_scaled[-seq_len:])
+    for i in range(len(test_scaled)):
+        inp = torch.tensor(np.array(history_eval[-seq_len:])[np.newaxis], dtype=torch.float32).to(device)
+        with torch.no_grad():
+            pred = model(inp).item()
+        pred = max(0, pred)
+        new_feat = test_scaled[i].copy()
+        new_feat[0] = pred
+        history_eval.append(new_feat)
+        test_pred.append(pred)
+    test_pred = scaler.inverse_transform(np.column_stack([test_pred] + [test_scaled[:, i] for i in range(1, test_scaled.shape[1])]))[:, 0]
+
+    rmse = math.sqrt(mean_squared_error(test_true, test_pred))
+    mae = mean_absolute_error(test_true, test_pred)
+    mape = mean_absolute_percentage_error(test_true, test_pred)
+    print(f"Test RMSE: {rmse:.4f}, MAE: {mae:.4f}, MAPE: {mape:.2f}%")
+
+    # Plot: only test and forecast
+    plt.figure(figsize=(12, 6))
+    plt.plot(test['Date'], test_true, label='Actual Test', color='blue')
+    plt.plot(test['Date'], test_pred, label='LSTM Prediction (Test)', linestyle=':', color='orange')
+    plt.plot(future_dates, forecast_values, label='Forecast (Future)', linestyle='--', color='red')
+    plt.title(f'{disease} LSTM Forecast (Test + Future)')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, f"{disease}_forecast_lstm_multivariate.png"))
+    plt.savefig(os.path.join(PLOT_DIR, f"{disease}_forecast.png"))
+
+    # Residuals plot
+    residuals = test_true - test_pred
+    plt.figure(figsize=(12, 4))
+    plt.plot(test['Date'], residuals, label='Residuals (Test - Forecast)', color='purple')
+    plt.axhline(0, color='black', linestyle='--')
+    plt.title(f'Residuals of {disease} Forecast')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOT_DIR, f"{disease}_forecast_residuals_realistic.png"))
     plt.close()
 
     pd.DataFrame({"Date": future_dates, "Forecast": forecast_values}).to_csv(
-        os.path.join(output_dir, f"{disease}_forecast_lstm_multivariate.csv"), index=False
+        os.path.join(OUTPUT_DIR, f"{disease}_forecast.csv"), index=False
     )
     print(f"✅ Forecast completed and saved for {disease}.")
 
-# Forecast both diseases
+def mean_absolute_percentage_error(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    return np.mean(np.abs((y_true - y_pred) / np.clip(np.abs(y_true), 1e-8, None))) * 100
+
+# --- Run Forecasts ---
 forecast_disease("chickenpox")
 forecast_disease("Giardiasis")
+

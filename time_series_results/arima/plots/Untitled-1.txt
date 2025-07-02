@@ -1,0 +1,22 @@
+    try:
+        if disease == 'Giardiasis':
+            model = auto_arima(
+                ...
+            )
+        else:
+            model = auto_arima(
+                ...
+            )
+        print(model.summary())
+    except Exception as e:
+        print(f"❌ auto_arima failed for {disease}: {e}")
+        if disease == 'Giardiasis':
+            print(f"Using fallback SARIMA(0,1,1)(1,1,1)[{m}] model...")
+            try:
+                model = SARIMAX(
+                    ...
+                ).fit(disp=False)
+                print(model.summary())
+            except Exception as e:
+                print(f"❌ Fallback SARIMA model failed for {disease}: {e}")
+                return
