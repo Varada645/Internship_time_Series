@@ -1,0 +1,3 @@
+Disease,Training_Data_Start,Training_Data_End,Training_Observations,Test_Data_Start,Test_Data_End,Test_Observations,Test_Data_Available,Forecast_Start,Forecast_End,Forecast_Observations,RMSE,MAE,MAPE,Evaluation_Observations,Evaluation_Start,Evaluation_End,SARIMA_Order_p_d_q,SARIMA_Seasonal_Order_P_D_Q_m,2017_Dates_in_Train,2017_Dates_in_Test,2017_Dates_in_Forecast
+chickenpox,2006-01-30,2016-12-26,570,2017-01-09,2019-12-30,156,Yes,2017-01-09,2022-12-26,312,N/A,N/A,N/A,N/A,N/A,N/A,"(2,1,1)","(1,1,1,52)",0,0,0
+Giardiasis,2006-01-30,2016-12-26,570,2017-01-09,2019-12-30,156,Yes,2017-01-09,2022-12-26,312,N/A,N/A,N/A,N/A,N/A,N/A,"(1,1,1)","(1,1,1,26)",0,0,0

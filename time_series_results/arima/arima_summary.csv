@@ -1,0 +1,3 @@
+Disease,Training_Data_Start,Training_Data_End,Training_Observations,Forecast_Start,Forecast_End,Forecast_Observations,Test_Data_Available,Test_Data_Start,Test_Data_End,Test_Observations,RMSE,MAE,MAPE,Evaluation_Observations,Evaluation_Start,Evaluation_End,Recommended_d,Recommended_D,2017_Dates_in_Train,2017_Dates_in_Forecast,2017_Dates_in_Test
+Giardiasis,2006-01-30,2016-12-26,570,2017-01-02,2022-01-03,262,Yes,2017-01-09,2019-12-30,156,44.53395048811307,34.740153754592846,N/A,156,2017-01-09 00:00:00,2019-12-30 00:00:00,1,1,0,0,0
+chickenpox,2006-01-30,2016-12-26,570,2017-01-02,2022-01-03,262,Yes,2017-01-09,2019-12-30,156,16.88993448163948,13.27390127945142,N/A,156,2017-01-09 00:00:00,2019-12-30 00:00:00,1,1,0,0,0

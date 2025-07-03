@@ -118,7 +118,8 @@ def forecast_disease(disease, seq_len=12, epochs=100, hidden_size=128, learning_
     # Forecast: start from end of test set until end of 2021
     model.eval()
     last_date = pd.to_datetime(test['Date'].iloc[-1])
-    end_date = pd.to_datetime("2021-12-27")  # Last Monday of 2021
+    end_date = pd.to_datetime("2020-12-28")  # Last Monday of 2020
+  
     future_weeks = max(1, ((end_date - last_date).days) // 7)
     history = list(test_scaled[-seq_len:])
     forecasts = []

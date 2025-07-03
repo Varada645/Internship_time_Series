@@ -250,7 +250,8 @@ def process_disease(disease, m):
         print(f"❌ Diagnostics plot failed for {disease}: {e}")
 
     # Forecast to 2021
-    end_date = pd.to_datetime('2021-12-31')
+    end_date = pd.to_datetime('2020-12-31')
+
     last_date = series.index[-1]
     if last_date >= end_date:
         print(f"Data for {disease} already extends beyond 2021. No forecast needed.")
