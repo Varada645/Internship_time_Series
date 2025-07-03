@@ -72,6 +72,22 @@ def forecast_with_sarima(disease):
     forecast_df = pd.DataFrame({"Date": all_dates, "Forecast": forecast}).set_index("Date")
     forecast_df.to_csv(os.path.join(OUTPUT_DIR, f"{disease}_sarima_forecast_extended.csv"))
 
+    # Save evaluation metrics
+    eval_metrics = pd.DataFrame({
+        "Disease": [disease],
+        "RMSE": [rmse],
+        "MAE": [mae],
+        "MAPE (%)": [mape],
+        "Test_Start": [test.index[0]],
+        "Test_End": [test.index[-1]],
+        "Forecast_End": [forecast_df.index[-1]],
+        "Test_Observations": [len(test)],
+        "Forecast_Observations": [len(forecast_df)]
+    })
+    eval_path = os.path.join(OUTPUT_DIR, f"{disease}_sarima_evaluation_metrics.csv")
+    eval_metrics.to_csv(eval_path, index=False)
+    print(f"📁 Evaluation metrics saved to {eval_path}")
+
     # Plot
     plt.figure(figsize=(12, 6))
     plt.plot(train[disease], label="Train", color='blue')

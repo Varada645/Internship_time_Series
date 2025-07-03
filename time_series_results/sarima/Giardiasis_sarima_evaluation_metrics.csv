@@ -1,0 +1,2 @@
+Disease,RMSE,MAE,MAPE (%),Test_Start,Test_End,Forecast_End,Test_Observations,Forecast_Observations
+Giardiasis,43.22275713085702,35.93231215110036,43.76275619879693,2017-01-09,2019-12-30,2022-12-26,156,312

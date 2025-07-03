@@ -4,12 +4,9 @@ import seaborn as sns
 import os
 
 # === CONFIG ===
-GRU_FORECAST_DIR = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/gru_model"
-CORRELATION_OUTPUT_DIR = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/correlation/gru"
-os.makedirs(CORRELATION_OUTPUT_DIR, exist_ok=True)
-
-CHICKENPOX_PATH = os.path.join(GRU_FORECAST_DIR, "chickenpox_gru_forecast_future.csv")
-GIARDIASIS_PATH = os.path.join(GRU_FORECAST_DIR, "Giardiasis_gru_forecast_future.csv")
+BASE_DIR = "C:/Users/VARADA S NAIR/OneDrive/Desktop/inter_disease/time_series_results/gru_model"
+CHICKENPOX_PATH = os.path.join(BASE_DIR, "chickenpox_gru_forecast_future.csv")
+GIARDIASIS_PATH = os.path.join(BASE_DIR, "Giardiasis_gru_forecast_future.csv")
 
 # === LOAD FORECAST DATA ===
 chickenpox = pd.read_csv(CHICKENPOX_PATH)
@@ -34,21 +31,17 @@ plt.ylabel("Predicted Cases")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig(os.path.join(CORRELATION_OUTPUT_DIR, "forecast_comparison_plot.png"))
+plt.savefig(os.path.join(BASE_DIR, "forecast_comparison_plot.png"))
 plt.show()
 
 # === CALCULATE CORRELATION ===
 correlation = merged_df['Chickenpox'].corr(merged_df['Giardiasis'])
 print(f"📊 Pearson Correlation between GRU forecasts: {correlation:.4f}")
 
-# Save correlation value to file
-with open(os.path.join(CORRELATION_OUTPUT_DIR, "correlation_value.txt"), "w") as f:
-    f.write(f"Pearson Correlation between GRU forecasts: {correlation:.4f}\n")
-
 # === HEATMAP VISUALIZATION ===
 plt.figure(figsize=(6, 4))
 sns.heatmap(merged_df[['Chickenpox', 'Giardiasis']].corr(), annot=True, cmap='coolwarm', fmt=".2f")
 plt.title("Correlation Heatmap: GRU Forecasts")
 plt.tight_layout()
-plt.savefig(os.path.join(CORRELATION_OUTPUT_DIR, "forecast_correlation_heatmap.png"))
+plt.savefig(os.path.join(BASE_DIR, "forecast_correlation_heatmap.png"))
 plt.show()

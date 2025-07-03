@@ -1,0 +1,1 @@
+Pearson Correlation between GRU forecasts: 0.5581
